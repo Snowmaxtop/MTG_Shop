@@ -439,6 +439,20 @@
     border-color: var(--accent);
     background: rgba(124, 92, 252, 0.06);
   }
+  .sync-btn-save.linked {
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .sync-btn-save.linked:hover {
+    background: rgba(74, 222, 128, 0.08);
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .sync-btn-save.saved-flash {
+    color: #fff !important;
+    background: var(--green) !important;
+    border-color: var(--green) !important;
+  }
 
   /* ── COLOR FILTER & SORT ── */
   .controls-row {
@@ -1187,6 +1201,7 @@
         <span class="sync-status" id="sync-status"></span>
         <button class="sync-btn" id="btn-import" title="Charger un fichier JSON">↑ Importer</button>
         <button class="sync-btn" id="btn-export" title="Télécharger inventory.json">↓ Exporter</button>
+        <button class="sync-btn sync-btn-save" id="btn-save" title="Écrire directement dans le fichier lié (Maj+clic pour changer)">💾 Sauver</button>
       </div>
     </div>
 
@@ -1685,6 +1700,15 @@
       const price = parseFloat(priceInput.value);
       if (isNaN(price) || price < 0) return;
 
+      // Capture colors (handles double-faced cards too) so enrichment doesn't re-fetch
+      let cardColors = c.colors;
+      if (!cardColors && c.card_faces) {
+        const cs = new Set();
+        c.card_faces.forEach(f => (f.colors || []).forEach(x => cs.add(x)));
+        cardColors = [...cs];
+      }
+      cardColors = cardColors || [];
+
       const item = {
         id: c.id + '-' + Date.now(),
         scryfallId: c.id,
@@ -1695,11 +1719,13 @@
         image: img,
         rarity: c.rarity,
         artist: c.artist || '',
+        colors: cardColors,
+        scryfall_uri: c.scryfall_uri,
         price,
         condition: panel.querySelector('#f-condition').value,
         language: panel.querySelector('#f-language').value,
         foil: panel.querySelector('#f-foil').checked,
-        cardmarketUrl: panel.querySelector('#f-cm').value.trim(),
+        cardmarketUrl: panel.querySelector('#f-cm').value.trim() || (c.purchase_uris?.cardmarket || ''),
         notes: panel.querySelector('#f-notes').value.trim(),
         addedAt: Date.now(),
       };
@@ -1966,6 +1992,130 @@
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-import').addEventListener('click', importJSON);
 
+  // ─── DIRECT FILE SAVE (File System Access API) ───
+  const saveBtn = document.getElementById('btn-save');
+  let linkedFileHandle = null;
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('mtg-tracker-fs', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function dbGetHandle() {
+    try {
+      const db = await openDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction('handles', 'readonly');
+        const req = tx.objectStore('handles').get('inventory');
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    } catch { return null; }
+  }
+  async function dbSetHandle(handle) {
+    try {
+      const db = await openDB();
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'inventory');
+      return new Promise(r => tx.oncomplete = r);
+    } catch {}
+  }
+
+  function fsApiSupported() {
+    return typeof window.showSaveFilePicker === 'function';
+  }
+
+  function flashSaved() {
+    saveBtn.classList.add('saved-flash');
+    const orig = saveBtn.textContent;
+    saveBtn.textContent = '✓ Sauvegardé';
+    setTimeout(() => {
+      saveBtn.classList.remove('saved-flash');
+      saveBtn.textContent = linkedFileHandle ? '💾 Sauver ●' : '💾 Sauver';
+    }, 1400);
+  }
+
+  function updateSaveBtnUI() {
+    if (linkedFileHandle) {
+      saveBtn.classList.add('linked');
+      saveBtn.textContent = '💾 Sauver ●';
+      saveBtn.title = `Écrit directement dans le fichier lié (Maj+clic pour changer)`;
+    } else {
+      saveBtn.classList.remove('linked');
+      saveBtn.textContent = '💾 Sauver';
+      saveBtn.title = 'Choisir un fichier pour la sauvegarde directe';
+    }
+  }
+
+  async function ensurePermission(handle) {
+    if (!handle.queryPermission) return true; // older spec
+    let p = await handle.queryPermission({ mode: 'readwrite' });
+    if (p === 'granted') return true;
+    p = await handle.requestPermission({ mode: 'readwrite' });
+    return p === 'granted';
+  }
+
+  async function directSave(forceNewFile = false) {
+    if (!fsApiSupported()) {
+      // Fallback to standard download
+      exportJSON();
+      return;
+    }
+    try {
+      let handle = forceNewFile ? null : linkedFileHandle;
+      if (!handle) {
+        handle = await window.showSaveFilePicker({
+          suggestedName: 'inventory.json',
+          types: [{
+            description: 'JSON',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        linkedFileHandle = handle;
+        await dbSetHandle(handle);
+        updateSaveBtnUI();
+      }
+      const granted = await ensurePermission(handle);
+      if (!granted) {
+        alert('Permission d\'écriture refusée');
+        return;
+      }
+      const json = JSON.stringify(inventory, null, 2);
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      jsonSnapshot = json;
+      localStorage.setItem(SNAPSHOT_KEY, jsonSnapshot);
+      renderSyncStatus();
+      flashSaved();
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user cancelled picker
+      console.error('Save failed:', err);
+      alert('Erreur de sauvegarde : ' + err.message);
+    }
+  }
+
+  saveBtn.addEventListener('click', e => {
+    directSave(e.shiftKey); // Shift+click = pick new file
+  });
+
+  // Restore previously-linked file handle on load
+  (async () => {
+    if (!fsApiSupported()) {
+      saveBtn.title = 'Non supporté par ce navigateur · utilise Exporter à la place';
+      return;
+    }
+    const handle = await dbGetHandle();
+    if (handle) {
+      // Permission may be revoked across sessions — we keep the handle but request perm on click
+      linkedFileHandle = handle;
+      updateSaveBtnUI();
+    }
+  })();
+
   // ─── SCRYFALL ENRICHMENT ───
   const enrichBanner = document.getElementById('enrich-banner');
   const enrichText = document.getElementById('enrich-text');
@@ -2030,6 +2180,8 @@
       }
       const batch = queue.slice(i, i + BATCH);
       const identifiers = batch.map(c => {
+        // Prefer scryfallId if we already have one — this preserves alt arts / specific printings.
+        if (c.scryfallId) return { id: c.scryfallId };
         const id = { name: c.name };
         if (c.setCode) id.set = c.setCode.toLowerCase();
         return id;
@@ -2052,13 +2204,17 @@
 
         // Match returned cards back to their inventory items
         for (const card of (data.data || [])) {
-          const match = batch.find(c =>
-            needsEnrichment(c) &&
-            (c.name.toLowerCase() === card.name.toLowerCase() ||
-             c.name.toLowerCase() === (card.card_faces?.[0]?.name || '').toLowerCase()) &&
-            (!c.setCode || c.setCode.toLowerCase() === card.set.toLowerCase())
-          );
-          // Also confirm the item is still in the current global inventory
+          const match = batch.find(c => {
+            if (!needsEnrichment(c)) return false;
+            // Primary: match by scryfallId (preserves alternate art / specific printings)
+            if (c.scryfallId && c.scryfallId === card.id) return true;
+            // Fallback: name + set
+            if (c.scryfallId) return false; // had an id but didn't match this card
+            const nameOk = c.name.toLowerCase() === card.name.toLowerCase() ||
+                           c.name.toLowerCase() === (card.card_faces?.[0]?.name || '').toLowerCase();
+            const setOk = !c.setCode || c.setCode.toLowerCase() === card.set.toLowerCase();
+            return nameOk && setOk;
+          });
           if (match && inventory.includes(match)) applyScryfallData(match, card);
         }
 
