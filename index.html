@@ -1,0 +1,2056 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTG Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #16161f;
+    --border: #1e1e2e;
+    --border2: #2a2a3a;
+    --accent: #7c5cfc;
+    --accent2: #c084fc;
+    --gold: #f4c542;
+    --green: #4ade80;
+    --red: #f87171;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-weight: 300;
+  }
+  ::selection { background: var(--accent); color: #fff; }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.08em;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .brand-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .stats {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+  }
+  .stat {
+    text-align: right;
+  }
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--accent2);
+  }
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    gap: 0;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 14px 0;
+    margin-right: 28px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── MAIN ── */
+  main {
+    padding: 28px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── ADD VIEW ── */
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 32px;
+  }
+  @media (max-width: 900px) {
+    .add-grid { grid-template-columns: 1fr; }
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .section-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .search-bar input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-bar button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0 22px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .search-bar button:hover { background: var(--accent2); }
+  .search-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .search-msg {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    padding: 12px 0;
+  }
+
+  .search-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    max-height: 640px;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  .search-results::-webkit-scrollbar { width: 6px; }
+  .search-results::-webkit-scrollbar-track { background: var(--surface); }
+  .search-results::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .search-results::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  .res-card {
+    cursor: pointer;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: transform 0.15s;
+    background: var(--surface);
+  }
+  .res-card:hover { transform: translateY(-2px); }
+  .res-card.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .res-card img { width: 100%; display: block; aspect-ratio: 5/7; object-fit: cover; }
+  .res-card-meta {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 8px;
+    background: linear-gradient(to top, rgba(10,10,15,0.95), transparent);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--accent2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .res-card:hover .res-card-meta { opacity: 1; }
+
+  /* ── FORM ── */
+  .form-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: sticky;
+    top: 20px;
+  }
+  .form-empty {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 60px 0;
+    font-size: 13px;
+  }
+  .selected-preview img {
+    width: 100%;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .selected-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .selected-set {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 4px;
+    margin-bottom: 18px;
+  }
+  .selected-set .rarity { color: var(--accent2); }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 50px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .foil-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .foil-toggle input { accent-color: var(--accent); }
+
+  .add-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 13px;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s;
+  }
+  .add-btn:hover:not(:disabled) { background: var(--accent2); }
+  .add-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── ENRICHMENT BANNER ── */
+  .enrich-banner {
+    display: none;
+    padding: 12px 28px;
+    background: linear-gradient(90deg, rgba(124, 92, 252, 0.15), rgba(192, 132, 252, 0.08));
+    border-bottom: 1px solid var(--accent);
+    align-items: center;
+    gap: 16px;
+  }
+  .enrich-banner.active { display: flex; }
+  .enrich-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .enrich-progress {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    max-width: 400px;
+  }
+  .enrich-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.3s ease;
+  }
+  .card-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--surface2), var(--bg));
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 12px;
+    text-align: center;
+  }
+
+  /* ── INVENTORY ── */
+  .sync-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .filter-bar {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+  }
+  .filter-bar input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 8px 0;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .filter-bar input:focus { border-bottom-color: var(--accent); }
+  .filter-bar input::placeholder { color: var(--muted); }
+
+  .sync-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sync-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+  .sync-status.unsaved { color: var(--gold); }
+  .sync-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .sync-btn:hover {
+    color: var(--accent2);
+    border-color: var(--accent);
+    background: rgba(124, 92, 252, 0.06);
+  }
+  .sync-btn-danger:hover {
+    color: var(--red) !important;
+    border-color: var(--red) !important;
+    background: rgba(248, 113, 113, 0.06) !important;
+  }
+
+  /* ── COLOR FILTER & SORT ── */
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .control-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .color-filter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .color-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .color-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .color-btn.active {
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--accent);
+    transform: translateY(-1px);
+  }
+  .color-btn.c-W { background: #f9e9bd; color: #6b5500; }
+  .color-btn.c-U { background: #aae0fa; color: #003a6b; }
+  .color-btn.c-B { background: #4a4448; color: #f0e8e6; border-color: #2a2428; }
+  .color-btn.c-R { background: #f9aa97; color: #6b1a0a; }
+  .color-btn.c-G { background: #a8d4a8; color: #1a4a1a; }
+  .color-btn.c-C { background: #cfcfcf; color: #2a2a2a; }
+  .color-btn.c-M {
+    background: linear-gradient(135deg, #f9e9bd, #aae0fa, #4a4448, #f9aa97, #a8d4a8);
+    color: #1a1a1a;
+    font-weight: 600;
+  }
+  .color-clear {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-left: 6px;
+    font-size: 11px;
+    line-height: 1;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .color-clear:hover {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .sort-buttons {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .sort-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .sort-btn:last-child { border-right: none; }
+  .sort-btn:hover { color: var(--text); }
+  .sort-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 100px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+  }
+  .empty-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .empty-sub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 18px;
+  }
+  .empty button {
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .empty button:hover { background: rgba(124, 92, 252, 0.1); }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .card-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+  }
+  .card-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .card-img-wrap {
+    position: relative;
+    aspect-ratio: 5/7;
+    background: var(--surface2);
+    overflow: hidden;
+  }
+  .card-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .foil-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: linear-gradient(90deg, #c084fc, #f4c542, #60a5fa);
+    color: #0a0a0f;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    background: rgba(10,10,15,0.85);
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .card-item:hover .remove-btn { display: flex; }
+  .remove-btn:hover {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .card-body { padding: 14px; }
+  .card-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-set {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-rarity-c { color: var(--text); }
+  .card-rarity-u { color: #cbd5e1; }
+  .card-rarity-r { color: var(--gold); }
+  .card-rarity-m { color: #fb923c; }
+  .card-rarity-s { color: var(--accent2); }
+  .card-rarity-b { color: var(--green); }
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .card-price {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--accent2);
+  }
+  .card-price span { font-size: 14px; color: var(--accent); margin-left: 1px; }
+  .card-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .card-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--accent2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .card-link:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .card-notes {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── RESERVED STATE ── */
+  .card-item.reserved .card-img-wrap img { opacity: 0.45; filter: saturate(0.6); }
+  .card-item.reserved { border-color: var(--accent); }
+  .reserved-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .reserved-for-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 0.08em;
+    margin-top: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .reserved-for-line::before {
+    content: '◆ ';
+    color: var(--accent);
+  }
+
+  .card-item { cursor: pointer; }
+  .card-item:hover .card-img-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(124, 92, 252, 0.15));
+    pointer-events: none;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 5, 10, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1000;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+    animation: fadeIn 0.18s ease-out;
+  }
+  .modal-overlay.open { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    max-width: 880px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: 0;
+    position: relative;
+    animation: slideUp 0.22s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @media (max-width: 700px) {
+    .modal { grid-template-columns: 1fr; }
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    background: rgba(10,10,15,0.9);
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .modal-close:hover {
+    color: var(--accent2);
+    border-color: var(--accent);
+  }
+  .modal-img {
+    padding: 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .modal-img img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .modal-body {
+    padding: 32px 28px 28px 4px;
+    overflow: hidden;
+  }
+  @media (max-width: 700px) {
+    .modal-body { padding: 8px 24px 24px; }
+  }
+  .modal-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1.05;
+    margin-bottom: 6px;
+  }
+  .modal-set {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .modal-set .rarity { color: var(--accent2); }
+  .modal-meta {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 24px;
+    margin-bottom: 22px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .meta-item .meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .meta-item .meta-value {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .meta-item .meta-value.price {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.04em;
+    color: var(--accent2);
+  }
+  .meta-item .meta-value.price span { font-size: 16px; color: var(--accent); margin-left: 1px; }
+  .meta-value.price-edit {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .meta-value.price-edit input {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.04em;
+    color: var(--accent2);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 0 2px 1px;
+    margin: 0;
+    width: 90px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    -moz-appearance: textfield;
+  }
+  .meta-value.price-edit input::-webkit-outer-spin-button,
+  .meta-value.price-edit input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .meta-value.price-edit input:hover {
+    border-bottom-color: var(--border2);
+  }
+  .meta-value.price-edit input:focus {
+    border-bottom-color: var(--accent);
+    background: rgba(124, 92, 252, 0.05);
+  }
+  .modal-notes-display {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 22px;
+    padding-left: 12px;
+    border-left: 2px solid var(--border2);
+  }
+  .modal-cm-link {
+    display: inline-block;
+    margin-bottom: 22px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    padding: 8px 14px;
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  .modal-cm-link:hover { background: rgba(124, 92, 252, 0.1); }
+
+  /* Check (verified) button & indicator */
+  .modal-quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 22px;
+  }
+  .modal-quick-actions .modal-cm-link { margin-bottom: 0; }
+  .check-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .check-btn:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+  .check-btn.active {
+    background: rgba(74, 222, 128, 0.08);
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .check-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    background: var(--green);
+    color: var(--bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .card-check-btn {
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 7px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .card-check-btn:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+  .card-check-btn.active {
+    background: rgba(74, 222, 128, 0.08);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* Reservation block in modal */
+  .reservation {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .reservation.active {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(124, 92, 252, 0.08), rgba(124, 92, 252, 0.02));
+  }
+  .reservation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .reservation-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .reservation.active .reservation-title { color: var(--accent2); }
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border2);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle-switch.on::after { transform: translateX(16px); }
+  .reservation textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 2px;
+    outline: none;
+    resize: vertical;
+    min-height: 48px;
+    transition: border-color 0.15s;
+  }
+  .reservation textarea:focus { border-color: var(--accent); }
+  .reservation textarea::placeholder { color: var(--muted); }
+  .reservation textarea:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .modal-actions button {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+  }
+  .btn-delete {
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+  .btn-delete:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">MTG Tracker</div>
+    <div class="brand-sub">Magic · The · Gathering</div>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="stat-count">0</div>
+      <div class="stat-label">Cartes</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" data-view="inventory">Mes cartes</button>
+  <button class="nav-btn" data-view="add">+ Ajouter</button>
+</nav>
+
+<div class="enrich-banner" id="enrich-banner">
+  <div class="enrich-text" id="enrich-text">Enrichissement Scryfall en cours…</div>
+  <div class="enrich-progress"><div class="enrich-progress-bar" id="enrich-bar"></div></div>
+</div>
+
+<main>
+  <!-- INVENTORY VIEW -->
+  <section class="view active" id="view-inventory">
+    <div class="sync-bar">
+      <div class="filter-bar">
+        <input type="text" id="filter" placeholder="Filtrer par nom ou édition…">
+      </div>
+      <div class="sync-actions">
+        <span class="sync-status" id="sync-status"></span>
+        <button class="sync-btn" id="btn-import" title="Charger un fichier JSON">↑ Importer</button>
+        <button class="sync-btn" id="btn-export" title="Télécharger inventory.json">↓ Exporter</button>
+        <button class="sync-btn sync-btn-danger" id="btn-reset" title="Effacer tout le contenu local">⟲ Reset</button>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="control-group">
+        <span class="control-label">Couleurs</span>
+        <div class="color-filter">
+          <button class="color-btn c-W" data-color="W" title="Blanc">W</button>
+          <button class="color-btn c-U" data-color="U" title="Bleu">U</button>
+          <button class="color-btn c-B" data-color="B" title="Noir">B</button>
+          <button class="color-btn c-R" data-color="R" title="Rouge">R</button>
+          <button class="color-btn c-G" data-color="G" title="Vert">G</button>
+          <button class="color-btn c-C" data-color="C" title="Incolore">C</button>
+          <button class="color-btn c-M" data-color="M" title="Multicolore">M</button>
+          <button class="color-clear" id="color-clear" title="Réinitialiser">✕</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <span class="control-label">Tri</span>
+        <div class="sort-buttons">
+          <button class="sort-btn active" data-sort="default">Défaut</button>
+          <button class="sort-btn" data-sort="price-desc">Prix ↓</button>
+          <button class="sort-btn" data-sort="price-asc">Prix ↑</button>
+          <button class="sort-btn" data-sort="rarity-desc">Rareté ↓</button>
+          <button class="sort-btn" data-sort="rarity-asc">Rareté ↑</button>
+        </div>
+      </div>
+    </div>
+    <div id="inventory-content"></div>
+  </section>
+
+  <!-- ADD VIEW -->
+  <section class="view" id="view-add">
+    <div class="add-grid">
+      <div>
+        <div class="section-title">Rechercher</div>
+        <div class="section-sub">Via Scryfall</div>
+        <form class="search-bar" id="search-form">
+          <input type="text" id="search-input" placeholder="Black Lotus, Lightning Bolt, Sol Ring…" autocomplete="off">
+          <button type="submit" id="search-btn">Chercher</button>
+        </form>
+        <div id="search-content"></div>
+      </div>
+
+      <div class="form-panel" id="form-panel">
+        <div class="form-empty">Sélectionnez une carte<br>pour la mettre en vente.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <button class="modal-close" id="modal-close" aria-label="Fermer">✕</button>
+    <div class="modal-img" id="modal-img-wrap"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+  // ─── STATE ───
+  const STORAGE_KEY = 'mtg-tracker-inventory';
+  const SNAPSHOT_KEY = 'mtg-tracker-json-snapshot';
+  let inventory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let jsonSnapshot = localStorage.getItem(SNAPSHOT_KEY) || ''; // last known inventory.json contents
+  let selectedCard = null;
+  let searchResults = [];
+
+  const CONDITIONS = [
+    ['NM', 'Near Mint'],
+    ['EX', 'Excellent'],
+    ['GD', 'Good'],
+    ['LP', 'Light Played'],
+    ['PL', 'Played'],
+    ['PO', 'Poor'],
+  ];
+  const LANGUAGES = ['EN', 'FR', 'DE', 'IT', 'ES', 'JP', 'KR', 'RU', 'ZH'];
+  const RARITY_CLASS = {
+    common: 'card-rarity-c',
+    uncommon: 'card-rarity-u',
+    rare: 'card-rarity-r',
+    mythic: 'card-rarity-m',
+    special: 'card-rarity-s',
+    bonus: 'card-rarity-b',
+  };
+  const RARITY_RANK = {
+    common: 0,
+    uncommon: 1,
+    rare: 2,
+    mythic: 3,
+    special: 4,
+    bonus: 5,
+  };
+  function rarityRank(c) {
+    const r = RARITY_RANK[c.rarity];
+    return r === undefined ? -1 : r;
+  }
+
+  // ─── PERSISTENCE ───
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(inventory));
+    renderStats();
+    renderSyncStatus();
+  }
+
+  function renderSyncStatus() {
+    const statusEl = document.getElementById('sync-status');
+    if (!statusEl) return;
+    const currentJson = JSON.stringify(inventory, null, 2);
+    if (jsonSnapshot && currentJson !== jsonSnapshot) {
+      statusEl.textContent = '● Non exporté';
+      statusEl.classList.add('unsaved');
+    } else if (jsonSnapshot && currentJson === jsonSnapshot) {
+      statusEl.textContent = '● Synchro';
+      statusEl.classList.remove('unsaved');
+    } else {
+      statusEl.textContent = '';
+      statusEl.classList.remove('unsaved');
+    }
+  }
+
+  // ─── NAVIGATION ───
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.view').forEach(v => {
+        v.classList.toggle('active', v.id === 'view-' + view);
+      });
+    });
+  });
+
+  // ─── STATS ───
+  function renderStats() {
+    document.getElementById('stat-count').textContent = inventory.length;
+  }
+
+  // ─── INVENTORY ───
+  const filterInput = document.getElementById('filter');
+  filterInput.addEventListener('input', renderInventory);
+
+  // Filter / sort state
+  const activeColors = new Set();
+  let sortMode = 'default';
+
+  // Wire up color buttons
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = btn.dataset.color;
+      if (activeColors.has(c)) {
+        activeColors.delete(c);
+        btn.classList.remove('active');
+      } else {
+        activeColors.add(c);
+        btn.classList.add('active');
+      }
+      renderInventory();
+    });
+  });
+  document.getElementById('color-clear').addEventListener('click', () => {
+    activeColors.clear();
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    renderInventory();
+  });
+
+  // Wire up sort buttons
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sortMode = btn.dataset.sort;
+      document.querySelectorAll('.sort-btn').forEach(b =>
+        b.classList.toggle('active', b === btn)
+      );
+      renderInventory();
+    });
+  });
+
+  function cardMatchesColors(c) {
+    if (activeColors.size === 0) return true;
+    const cardColors = Array.isArray(c.colors) ? c.colors : [];
+    const isColorless = cardColors.length === 0;
+    const isMulti = cardColors.length >= 2;
+    if (activeColors.has('C') && isColorless) return true;
+    if (activeColors.has('M') && isMulti) return true;
+    for (const cc of cardColors) {
+      if (activeColors.has(cc)) return true;
+    }
+    return false;
+  }
+
+  function renderInventory() {
+    const container = document.getElementById('inventory-content');
+    const q = filterInput.value.trim().toLowerCase();
+    console.log('[Render]', inventory.length, 'cards in inventory · first =', inventory[0]?.name || '(empty)');
+
+    let filtered = inventory.filter(c => {
+      if (q) {
+        const hit =
+          c.name.toLowerCase().includes(q) ||
+          (c.set || '').toLowerCase().includes(q) ||
+          (c.setCode || '').toLowerCase().includes(q) ||
+          (c.reservedFor || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      if (!cardMatchesColors(c)) return false;
+      return true;
+    });
+
+    if (sortMode === 'price-desc') {
+      filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (sortMode === 'price-asc') {
+      filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (sortMode === 'rarity-desc') {
+      filtered = [...filtered].sort((a, b) => {
+        const r = rarityRank(b) - rarityRank(a);
+        if (r !== 0) return r;
+        return (b.price || 0) - (a.price || 0);
+      });
+    } else if (sortMode === 'rarity-asc') {
+      filtered = [...filtered].sort((a, b) => {
+        const r = rarityRank(a) - rarityRank(b);
+        if (r !== 0) return r;
+        return (a.price || 0) - (b.price || 0);
+      });
+    }
+
+    if (filtered.length === 0) {
+      const hasFilters = q || activeColors.size > 0;
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-title">${inventory.length === 0 ? 'Aucune carte' : 'Aucun résultat'}</div>
+          <div class="empty-sub">${inventory.length === 0 ? 'Commencez par ajouter votre première carte.' : (hasFilters ? 'Essayez d\'élargir vos filtres.' : 'Aucun résultat.')}</div>
+          ${inventory.length === 0 ? '<button onclick="document.querySelector(\'[data-view=add]\').click()">+ Ajouter une carte</button>' : ''}
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `<div class="card-grid">${filtered.map(renderCardItem).join('')}</div>`;
+    container.querySelectorAll('.card-item').forEach(el => {
+      el.addEventListener('click', () => {
+        openModal(el.dataset.id);
+      });
+    });
+    container.querySelectorAll('.card-check-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const id = btn.dataset.checkId;
+        const card = inventory.find(item => item.id === id);
+        if (!card) return;
+        card.checked = !card.checked;
+        btn.classList.toggle('active', card.checked);
+        btn.textContent = card.checked ? '✓ Vérifié' : '○ À vérifier';
+        save();
+      });
+    });
+  }
+
+  function renderCardItem(c) {
+    const rarityClass = RARITY_CLASS[c.rarity] || '';
+    const isReserved = !!c.reserved;
+    const cn = c.collector_number ? ` · #${c.collector_number}` : '';
+    const rarity = c.rarity ? ` · <span class="${rarityClass}">${c.rarity}</span>` : '';
+    return `
+      <div class="card-item${isReserved ? ' reserved' : ''}" data-id="${c.id}">
+        <div class="card-img-wrap">
+          ${c.image
+            ? `<img src="${c.image}" alt="${escapeHtml(c.name)}">`
+            : `<div class="card-img-placeholder">${escapeHtml(c.name)}</div>`}
+          ${c.foil && !isReserved ? '<div class="foil-badge">Foil</div>' : ''}
+          ${isReserved ? '<div class="reserved-badge">Réservé</div>' : ''}
+        </div>
+        <div class="card-body">
+          <div class="card-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>
+          <div class="card-set">${escapeHtml(c.setCode || '?')}${cn}${rarity}</div>
+          <div class="card-footer">
+            <div class="card-price">${(c.price || 0).toFixed(2)}<span>€</span></div>
+            <div class="card-meta">${c.condition || 'NM'} · ${c.language || 'EN'}</div>
+          </div>
+          ${c.cardmarketUrl ? `<a class="card-link" href="${c.cardmarketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cardmarket →</a>` : ''}
+          ${isReserved && c.reservedFor ? `<div class="reserved-for-line">${escapeHtml(c.reservedFor)}</div>` : ''}
+          ${c.notes ? `<div class="card-notes">${escapeHtml(c.notes)}</div>` : ''}
+          <button class="card-check-btn${c.checked ? ' active' : ''}" data-check-id="${c.id}">
+            ${c.checked ? '✓ Vérifié' : '○ À vérifier'}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
+  }
+
+  // ─── SEARCH ───
+  const searchForm = document.getElementById('search-form');
+  const searchInput = document.getElementById('search-input');
+  const searchBtn = document.getElementById('search-btn');
+  const searchContent = document.getElementById('search-content');
+
+  searchForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    if (!q) return;
+
+    searchBtn.disabled = true;
+    searchBtn.textContent = '...';
+    searchContent.innerHTML = `<div class="search-msg">Recherche…</div>`;
+
+    try {
+      const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc`);
+      if (res.status === 404) {
+        searchResults = [];
+        searchContent.innerHTML = `<div class="search-msg">Aucune carte trouvée.</div>`;
+        return;
+      }
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      searchResults = (data.data || []).slice(0, 30);
+      renderSearchResults();
+    } catch (err) {
+      searchContent.innerHTML = `<div class="search-msg">Erreur de connexion à Scryfall.</div>`;
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = 'Chercher';
+    }
+  });
+
+  function renderSearchResults() {
+    if (searchResults.length === 0) {
+      searchContent.innerHTML = '';
+      return;
+    }
+    searchContent.innerHTML = `
+      <div class="section-sub" style="margin-bottom:14px">${searchResults.length} impression${searchResults.length > 1 ? 's' : ''} · Cliquez pour sélectionner</div>
+      <div class="search-results">
+        ${searchResults.map(c => {
+          const img = c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '';
+          const isSelected = selectedCard?.id === c.id;
+          return `
+            <div class="res-card${isSelected ? ' selected' : ''}" data-id="${c.id}">
+              ${img ? `<img src="${img}" alt="${escapeHtml(c.name)}">` : `<div style="aspect-ratio:5/7;display:flex;align-items:center;justify-content:center;padding:8px;font-size:11px;color:var(--muted);text-align:center">${escapeHtml(c.name)}</div>`}
+              <div class="res-card-meta">${c.set.toUpperCase()} · ${c.collector_number}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    searchContent.querySelectorAll('.res-card').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        selectedCard = searchResults.find(c => c.id === id);
+        renderSearchResults();
+        renderForm();
+      });
+    });
+  }
+
+  // ─── FORM ───
+  function renderForm() {
+    const panel = document.getElementById('form-panel');
+    if (!selectedCard) {
+      panel.innerHTML = `<div class="form-empty">Sélectionnez une carte<br>pour la mettre en vente.</div>`;
+      return;
+    }
+    const c = selectedCard;
+    const img = c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || '';
+    const cmUrl = c.purchase_uris?.cardmarket || '';
+    const rarityClass = RARITY_CLASS[c.rarity] || '';
+
+    panel.innerHTML = `
+      <div class="selected-preview">
+        ${img ? `<img src="${img}" alt="${escapeHtml(c.name)}">` : ''}
+      </div>
+      <div class="selected-name">${escapeHtml(c.name)}</div>
+      <div class="selected-set">${escapeHtml(c.set_name)} · <span class="rarity ${rarityClass}">${c.rarity}</span></div>
+
+      <div class="field">
+        <label>Prix (€)</label>
+        <input type="number" id="f-price" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>État</label>
+          <select id="f-condition">
+            ${CONDITIONS.map(([code, lab]) => `<option value="${code}">${code} — ${lab}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Langue</label>
+          <select id="f-language">
+            ${LANGUAGES.map(l => `<option value="${l}">${l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <label class="foil-toggle">
+        <input type="checkbox" id="f-foil"> Version Foil
+      </label>
+      <div class="field">
+        <label>Lien Cardmarket</label>
+        <input type="url" id="f-cm" value="${cmUrl}" placeholder="https://www.cardmarket.com/…">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="Détails sur l'état, signatures…"></textarea>
+      </div>
+      <button class="add-btn" id="f-submit" disabled>Mettre en vente</button>
+    `;
+
+    const priceInput = panel.querySelector('#f-price');
+    const submitBtn = panel.querySelector('#f-submit');
+    priceInput.addEventListener('input', () => {
+      submitBtn.disabled = !priceInput.value || parseFloat(priceInput.value) < 0;
+    });
+    priceInput.focus();
+
+    submitBtn.addEventListener('click', () => {
+      const price = parseFloat(priceInput.value);
+      if (isNaN(price) || price < 0) return;
+
+      const item = {
+        id: c.id + '-' + Date.now(),
+        scryfallId: c.id,
+        name: c.name,
+        set: c.set_name,
+        setCode: c.set.toUpperCase(),
+        collector_number: c.collector_number,
+        image: img,
+        rarity: c.rarity,
+        artist: c.artist || '',
+        price,
+        condition: panel.querySelector('#f-condition').value,
+        language: panel.querySelector('#f-language').value,
+        foil: panel.querySelector('#f-foil').checked,
+        cardmarketUrl: panel.querySelector('#f-cm').value.trim(),
+        notes: panel.querySelector('#f-notes').value.trim(),
+        addedAt: Date.now(),
+      };
+      inventory.unshift(item);
+      save();
+
+      // Reset
+      selectedCard = null;
+      searchResults = [];
+      searchInput.value = '';
+      searchContent.innerHTML = '';
+      renderForm();
+
+      // Switch to inventory view
+      document.querySelector('[data-view=inventory]').click();
+      renderInventory();
+    });
+  }
+
+  // ─── MODAL ───
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalImgWrap = document.getElementById('modal-img-wrap');
+  const modalBody = document.getElementById('modal-body');
+  const modalCloseBtn = document.getElementById('modal-close');
+  let modalCardId = null;
+
+  function openModal(id) {
+    const c = inventory.find(item => item.id === id);
+    if (!c) return;
+    modalCardId = id;
+    renderModal(c);
+    modalOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+    modalCardId = null;
+    document.body.style.overflow = '';
+  }
+
+  function renderModal(c) {
+    const rarityClass = RARITY_CLASS[c.rarity] || '';
+    const isReserved = !!c.reserved;
+
+    modalImgWrap.innerHTML = c.image
+      ? `<img src="${c.image}" alt="${escapeHtml(c.name)}">`
+      : `<div style="aspect-ratio:5/7;width:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);padding:20px;text-align:center">${escapeHtml(c.name)}</div>`;
+
+    modalBody.innerHTML = `
+      <div class="modal-name">${escapeHtml(c.name)}</div>
+      <div class="modal-set">${escapeHtml(c.set)} · #${c.collector_number} · <span class="rarity ${rarityClass}">${c.rarity}</span></div>
+
+      <div class="modal-meta">
+        <div class="meta-item">
+          <div class="meta-label">Prix</div>
+          <div class="meta-value price price-edit">
+            <input type="number" id="modal-price-input" step="0.01" min="0" value="${c.price.toFixed(2)}" aria-label="Prix">
+            <span>€</span>
+          </div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">État · Langue</div>
+          <div class="meta-value">${c.condition} · ${c.language}${c.foil ? ' · Foil' : ''}</div>
+        </div>
+        ${c.artist ? `
+        <div class="meta-item" style="grid-column:1/-1">
+          <div class="meta-label">Illustration</div>
+          <div class="meta-value">${escapeHtml(c.artist)}</div>
+        </div>` : ''}
+      </div>
+
+      ${c.notes ? `<div class="modal-notes-display">${escapeHtml(c.notes)}</div>` : ''}
+
+      <div class="modal-quick-actions">
+        ${c.cardmarketUrl ? `<a class="modal-cm-link" href="${c.cardmarketUrl}" target="_blank" rel="noopener">Voir sur Cardmarket →</a>` : ''}
+        <button class="check-btn${c.checked ? ' active' : ''}" id="modal-check">
+          ${c.checked ? '✓ Vérifié' : '○ À vérifier'}
+        </button>
+      </div>
+
+      <div class="reservation${isReserved ? ' active' : ''}" id="reservation-block">
+        <div class="reservation-header">
+          <div class="reservation-title">${isReserved ? 'Réservée pour' : 'Marquer comme réservée'}</div>
+          <div class="toggle-switch${isReserved ? ' on' : ''}" id="reservation-toggle" role="switch" aria-checked="${isReserved}" tabindex="0"></div>
+        </div>
+        <textarea id="reservation-text" placeholder="Nom, contact, conditions de la réservation…" ${isReserved ? '' : 'disabled'}>${escapeHtml(c.reservedFor || '')}</textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-delete" id="modal-delete">Supprimer</button>
+      </div>
+    `;
+
+    // Reservation toggle handler
+    const toggle = modalBody.querySelector('#reservation-toggle');
+    const textarea = modalBody.querySelector('#reservation-text');
+    const block = modalBody.querySelector('#reservation-block');
+    const titleEl = modalBody.querySelector('.reservation-title');
+    const priceInput = modalBody.querySelector('#modal-price-input');
+
+    // Editable price
+    priceInput.addEventListener('input', () => {
+      const card = inventory.find(item => item.id === modalCardId);
+      if (!card) return;
+      const v = parseFloat(priceInput.value);
+      if (isNaN(v) || v < 0) return;
+      card.price = v;
+      save();
+    });
+    priceInput.addEventListener('blur', () => {
+      // Reformat on blur (e.g. "5" → "5.00") and re-render grid
+      const card = inventory.find(item => item.id === modalCardId);
+      if (!card) return;
+      const v = parseFloat(priceInput.value);
+      if (isNaN(v) || v < 0) {
+        priceInput.value = card.price.toFixed(2);
+      } else {
+        card.price = v;
+        priceInput.value = v.toFixed(2);
+        save();
+      }
+      renderInventory();
+    });
+    priceInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        priceInput.blur();
+      }
+    });
+
+    function toggleReservation() {
+      const card = inventory.find(item => item.id === modalCardId);
+      if (!card) return;
+      card.reserved = !card.reserved;
+      if (!card.reserved) card.reservedFor = '';
+      toggle.classList.toggle('on', card.reserved);
+      toggle.setAttribute('aria-checked', card.reserved);
+      block.classList.toggle('active', card.reserved);
+      textarea.disabled = !card.reserved;
+      titleEl.textContent = card.reserved ? 'Réservée pour' : 'Marquer comme réservée';
+      if (card.reserved) {
+        textarea.focus();
+      } else {
+        textarea.value = '';
+      }
+      save();
+      renderInventory();
+    }
+
+    toggle.addEventListener('click', toggleReservation);
+    toggle.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        toggleReservation();
+      }
+    });
+
+    textarea.addEventListener('input', () => {
+      const card = inventory.find(item => item.id === modalCardId);
+      if (!card) return;
+      card.reservedFor = textarea.value;
+      save();
+    });
+    textarea.addEventListener('blur', () => {
+      renderInventory();
+    });
+
+    // Check (verified) toggle
+    const checkBtn = modalBody.querySelector('#modal-check');
+    checkBtn.addEventListener('click', () => {
+      const card = inventory.find(item => item.id === modalCardId);
+      if (!card) return;
+      card.checked = !card.checked;
+      checkBtn.classList.toggle('active', card.checked);
+      checkBtn.textContent = card.checked ? '✓ Vérifié' : '○ À vérifier';
+      save();
+      renderInventory();
+    });
+
+    modalBody.querySelector('#modal-delete').addEventListener('click', () => {
+      if (confirm('Supprimer cette carte de l\'inventaire ?')) {
+        inventory = inventory.filter(item => item.id !== modalCardId);
+        save();
+        renderInventory();
+        closeModal();
+      }
+    });
+  }
+
+  modalCloseBtn.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', e => {
+    if (e.target === modalOverlay) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modalOverlay.classList.contains('open')) {
+      closeModal();
+    }
+  });
+
+  // ─── EXPORT / IMPORT ───
+  function exportJSON() {
+    const data = JSON.stringify(inventory, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    // Update snapshot so the "non exporté" indicator disappears
+    jsonSnapshot = data;
+    localStorage.setItem(SNAPSHOT_KEY, jsonSnapshot);
+    renderSyncStatus();
+  }
+
+  // AbortController so import can cancel any in-flight init fetch
+  const initController = new AbortController();
+
+  function importJSON() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!Array.isArray(data)) throw new Error('Not an array');
+          if (inventory.length > 0 && !confirm(
+            `Remplacer ton inventaire actuel (${inventory.length} carte${inventory.length > 1 ? 's' : ''}) ` +
+            `par celui du fichier (${data.length} carte${data.length > 1 ? 's' : ''}) ?`
+          )) return;
+          // CRITICAL: cancel any in-progress init/enrichment BEFORE assigning new data
+          console.log('[Import] Cancelling pending operations, applying', data.length, 'cards');
+          initFetchAborted = true;
+          initController.abort();
+          enrichmentGen++;          // invalidate any ongoing enrichInventory
+          hideEnrich();             // hide any leftover banner
+          inventory = data;
+          jsonSnapshot = JSON.stringify(inventory, null, 2);
+          localStorage.setItem(SNAPSHOT_KEY, jsonSnapshot);
+          save();
+          renderInventory();
+          console.log('[Import] After import, inventory.length =', inventory.length);
+          // Defer enrichment slightly so any pending microtasks finish first
+          setTimeout(() => {
+            console.log('[Import] Triggering enrichment for', inventory.length, 'cards');
+            enrichInventory();
+          }, 50);
+        } catch (err) {
+          alert('Fichier JSON invalide : ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  document.getElementById('btn-export').addEventListener('click', exportJSON);
+  document.getElementById('btn-import').addEventListener('click', importJSON);
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (!confirm('Effacer toutes les cartes ET la mémoire locale du navigateur ? Cette action est irréversible.')) return;
+    console.log('[Reset] Clearing localStorage and inventory');
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SNAPSHOT_KEY);
+    enrichmentGen++;
+    hideEnrich();
+    inventory = [];
+    jsonSnapshot = '';
+    renderStats();
+    renderInventory();
+    renderSyncStatus();
+  });
+
+  // ─── SCRYFALL ENRICHMENT ───
+  const enrichBanner = document.getElementById('enrich-banner');
+  const enrichText = document.getElementById('enrich-text');
+  const enrichBar = document.getElementById('enrich-bar');
+
+  function needsEnrichment(c) {
+    return c.needsEnrichment === true || (!c.image && !c.scryfallId) || c.colors === undefined;
+  }
+
+  function showEnrich(text, pct) {
+    enrichBanner.classList.add('active');
+    enrichText.textContent = text;
+    enrichBar.style.width = pct + '%';
+  }
+  function hideEnrich() {
+    enrichBanner.classList.remove('active');
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function applyScryfallData(item, card) {
+    const img = card.image_uris?.normal ||
+                card.card_faces?.[0]?.image_uris?.normal || '';
+    // Aggregate colors (handles double-faced cards)
+    let colors = card.colors;
+    if (!colors && card.card_faces) {
+      const set = new Set();
+      card.card_faces.forEach(f => (f.colors || []).forEach(c => set.add(c)));
+      colors = [...set];
+    }
+    item.scryfallId = card.id;
+    item.image = img;
+    item.set = card.set_name;
+    item.setCode = (card.set || item.setCode).toUpperCase();
+    item.collector_number = card.collector_number;
+    item.rarity = card.rarity;
+    item.artist = card.artist || '';
+    item.colors = colors || [];
+    item.scryfall_uri = card.scryfall_uri;
+    if (!item.cardmarketUrl) {
+      item.cardmarketUrl = card.purchase_uris?.cardmarket || '';
+    }
+    item.needsEnrichment = false;
+    delete item.enrichmentFailed;
+  }
+
+  let enrichmentGen = 0;
+  async function enrichInventory() {
+    const myGen = ++enrichmentGen;
+    const queue = inventory.filter(needsEnrichment);
+    console.log('[Enrich gen=' + myGen + '] Starting, queue size =', queue.length);
+    if (queue.length === 0) return;
+
+    showEnrich(`Scryfall : 0 / ${queue.length}`, 0);
+    let done = 0;
+    const BATCH = 70;
+
+    for (let i = 0; i < queue.length; i += BATCH) {
+      // Bail out if a newer enrichment has been started
+      if (myGen !== enrichmentGen) {
+        hideEnrich();
+        return;
+      }
+      const batch = queue.slice(i, i + BATCH);
+      const identifiers = batch.map(c => {
+        const id = { name: c.name };
+        if (c.setCode) id.set = c.setCode.toLowerCase();
+        return id;
+      });
+
+      try {
+        const res = await fetch('https://api.scryfall.com/cards/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        // Bail out if a newer enrichment has been started during the fetch
+        if (myGen !== enrichmentGen) {
+          hideEnrich();
+          return;
+        }
+
+        // Match returned cards back to their inventory items
+        for (const card of (data.data || [])) {
+          const match = batch.find(c =>
+            needsEnrichment(c) &&
+            (c.name.toLowerCase() === card.name.toLowerCase() ||
+             c.name.toLowerCase() === (card.card_faces?.[0]?.name || '').toLowerCase()) &&
+            (!c.setCode || c.setCode.toLowerCase() === card.set.toLowerCase())
+          );
+          // Also confirm the item is still in the current global inventory
+          if (match && inventory.includes(match)) applyScryfallData(match, card);
+        }
+
+        // For not_found, retry with fuzzy single lookups
+        for (const nf of (data.not_found || [])) {
+          if (myGen !== enrichmentGen) { hideEnrich(); return; }
+          const match = batch.find(c =>
+            needsEnrichment(c) &&
+            c.name === nf.name &&
+            (!c.setCode || c.setCode.toLowerCase() === (nf.set || '').toLowerCase())
+          );
+          if (!match || !inventory.includes(match)) continue;
+          const frontName = match.name.split(' // ')[0];
+          const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(frontName)}` +
+                      (match.setCode ? `&set=${match.setCode.toLowerCase()}` : '');
+          try {
+            const r2 = await fetch(url);
+            if (r2.ok) {
+              applyScryfallData(match, await r2.json());
+            } else {
+              match.needsEnrichment = false;
+              match.enrichmentFailed = true;
+            }
+          } catch {
+            match.needsEnrichment = false;
+            match.enrichmentFailed = true;
+          }
+          await sleep(110);
+        }
+      } catch (err) {
+        console.error('Scryfall batch failed:', err);
+      }
+
+      if (myGen !== enrichmentGen) { hideEnrich(); return; }
+      done += batch.length;
+      const pct = Math.round((done / queue.length) * 100);
+      showEnrich(`Scryfall : ${done} / ${queue.length}`, pct);
+      save();
+      renderInventory();
+      await sleep(150);
+    }
+
+    if (myGen !== enrichmentGen) return;
+    const failed = inventory.filter(c => c.enrichmentFailed).length;
+    if (failed > 0) {
+      showEnrich(`Terminé — ${failed} carte${failed > 1 ? 's' : ''} introuvable${failed > 1 ? 's' : ''} sur Scryfall`, 100);
+      setTimeout(hideEnrich, 5000);
+    } else {
+      showEnrich(`Enrichissement terminé · N'oublie pas d'exporter le JSON`, 100);
+      setTimeout(hideEnrich, 4000);
+    }
+  }
+
+  // ─── INIT ───
+  let initFetchAborted = false;
+  async function init() {
+    console.log('[Init] Starting, inventory length =', inventory.length);
+    // First-time visitor (no localStorage): try to load inventory.json from same directory
+    if (inventory.length === 0) {
+      try {
+        console.log('[Init] Fetching inventory.json...');
+        const r = await fetch('inventory.json?t=' + Date.now(), {
+          cache: 'no-store',
+          signal: initController.signal
+        });
+        if (r.ok) {
+          const data = await r.json();
+          // Race-guard: don't overwrite if user imported during the fetch
+          if (Array.isArray(data) && inventory.length === 0 && !initFetchAborted) {
+            console.log('[Init] Applying', data.length, 'cards from inventory.json');
+            inventory = data;
+            jsonSnapshot = JSON.stringify(inventory, null, 2);
+            localStorage.setItem(SNAPSHOT_KEY, jsonSnapshot);
+            save();
+          } else {
+            console.log('[Init] Skipping fetch result (aborted or inventory already populated)');
+          }
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          console.log('[Init] Fetch aborted (user imported during init)');
+        }
+      }
+    }
+    if (initFetchAborted) {
+      console.log('[Init] Aborted, skipping renders');
+      return;
+    }
+    renderStats();
+    renderInventory();
+    renderSyncStatus();
+    // Auto-enrich if needed
+    enrichInventory();
+  }
+  init();
+</script>
+
+</body>
+</html>
