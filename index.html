@@ -439,11 +439,6 @@
     border-color: var(--accent);
     background: rgba(124, 92, 252, 0.06);
   }
-  .sync-btn-danger:hover {
-    color: var(--red) !important;
-    border-color: var(--red) !important;
-    background: rgba(248, 113, 113, 0.06) !important;
-  }
 
   /* ── COLOR FILTER & SORT ── */
   .controls-row {
@@ -1015,6 +1010,52 @@
     color: var(--green);
   }
 
+  /* Language flag button on cards */
+  .lang-flag {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+    transition: transform 0.12s;
+  }
+  .lang-flag:hover { transform: scale(1.2); }
+
+  /* Shared language picker popover */
+  .lang-picker {
+    position: absolute;
+    display: none;
+    flex-wrap: wrap;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 6px;
+    z-index: 100;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    max-width: 220px;
+  }
+  .lang-picker.open { display: flex; }
+  .lang-picker .lang-option {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .lang-picker .lang-option:hover {
+    background: rgba(124, 92, 252, 0.15);
+  }
+  .lang-picker .lang-option.active {
+    background: var(--accent);
+    border-color: var(--accent2);
+  }
+
   /* Reservation block in modal */
   .reservation {
     background: var(--bg);
@@ -1146,7 +1187,6 @@
         <span class="sync-status" id="sync-status"></span>
         <button class="sync-btn" id="btn-import" title="Charger un fichier JSON">↑ Importer</button>
         <button class="sync-btn" id="btn-export" title="Télécharger inventory.json">↓ Exporter</button>
-        <button class="sync-btn sync-btn-danger" id="btn-reset" title="Effacer tout le contenu local">⟲ Reset</button>
       </div>
     </div>
 
@@ -1207,6 +1247,9 @@
   </div>
 </div>
 
+<!-- LANGUAGE PICKER POPUP -->
+<div class="lang-picker" id="lang-picker"></div>
+
 <script>
   // ─── STATE ───
   const STORAGE_KEY = 'mtg-tracker-inventory';
@@ -1224,7 +1267,21 @@
     ['PL', 'Played'],
     ['PO', 'Poor'],
   ];
-  const LANGUAGES = ['EN', 'FR', 'DE', 'IT', 'ES', 'JP', 'KR', 'RU', 'ZH'];
+  const LANGUAGES = ['FR', 'EN', 'DE', 'IT', 'ES', 'JP', 'KR', 'RU', 'ZH'];
+  const LANGUAGE_FLAGS = {
+    FR: '🇫🇷',
+    EN: '🇬🇧',
+    DE: '🇩🇪',
+    IT: '🇮🇹',
+    ES: '🇪🇸',
+    JP: '🇯🇵',
+    KR: '🇰🇷',
+    RU: '🇷🇺',
+    ZH: '🇨🇳',
+  };
+  function flagFor(lang) {
+    return LANGUAGE_FLAGS[lang] || ('🏳️ ' + (lang || '?'));
+  }
   const RARITY_CLASS = {
     common: 'card-rarity-c',
     uncommon: 'card-rarity-u',
@@ -1402,7 +1459,67 @@
         save();
       });
     });
+    container.querySelectorAll('.lang-flag').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openLangPicker(btn, btn.dataset.langId);
+      });
+    });
   }
+
+  // ─── LANGUAGE PICKER ───
+  const langPicker = document.getElementById('lang-picker');
+  let langPickerCardId = null;
+
+  function openLangPicker(anchorEl, cardId) {
+    const card = inventory.find(c => c.id === cardId);
+    if (!card) return;
+    langPickerCardId = cardId;
+    langPicker.innerHTML = LANGUAGES.map(l =>
+      `<button class="lang-option${l === card.language ? ' active' : ''}" data-lang="${l}" title="${l}">${flagFor(l)}</button>`
+    ).join('');
+    langPicker.classList.add('open');
+
+    // Position next to the anchor flag
+    const rect = anchorEl.getBoundingClientRect();
+    const pickerRect = langPicker.getBoundingClientRect();
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    let left = rect.left + scrollX - (pickerRect.width / 2) + (rect.width / 2);
+    let top = rect.bottom + scrollY + 6;
+    // Keep inside viewport
+    left = Math.max(8, Math.min(left, window.innerWidth - pickerRect.width - 8));
+    if (top + pickerRect.height > window.innerHeight + scrollY - 8) {
+      top = rect.top + scrollY - pickerRect.height - 6;
+    }
+    langPicker.style.left = left + 'px';
+    langPicker.style.top = top + 'px';
+
+    // Wire option clicks
+    langPicker.querySelectorAll('.lang-option').forEach(opt => {
+      opt.addEventListener('click', e => {
+        e.stopPropagation();
+        const c = inventory.find(item => item.id === langPickerCardId);
+        if (!c) return;
+        c.language = opt.dataset.lang;
+        save();
+        closeLangPicker();
+        renderInventory();
+      });
+    });
+  }
+  function closeLangPicker() {
+    langPicker.classList.remove('open');
+    langPickerCardId = null;
+  }
+  document.addEventListener('click', e => {
+    if (langPickerCardId && !langPicker.contains(e.target)) {
+      closeLangPicker();
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && langPickerCardId) closeLangPicker();
+  });
 
   function renderCardItem(c) {
     const rarityClass = RARITY_CLASS[c.rarity] || '';
@@ -1423,7 +1540,7 @@
           <div class="card-set">${escapeHtml(c.setCode || '?')}${cn}${rarity}</div>
           <div class="card-footer">
             <div class="card-price">${(c.price || 0).toFixed(2)}<span>€</span></div>
-            <div class="card-meta">${c.condition || 'NM'} · ${c.language || 'EN'}</div>
+            <div class="card-meta">${c.condition || 'NM'} · <button class="lang-flag" data-lang-id="${c.id}" title="Changer la langue">${flagFor(c.language || 'FR')}</button></div>
           </div>
           ${c.cardmarketUrl ? `<a class="card-link" href="${c.cardmarketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cardmarket →</a>` : ''}
           ${isReserved && c.reservedFor ? `<div class="reserved-for-line">${escapeHtml(c.reservedFor)}</div>` : ''}
@@ -1539,7 +1656,7 @@
         <div class="field">
           <label>Langue</label>
           <select id="f-language">
-            ${LANGUAGES.map(l => `<option value="${l}">${l}</option>`).join('')}
+            ${LANGUAGES.map(l => `<option value="${l}">${flagFor(l)} ${l}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -1646,7 +1763,7 @@
         </div>
         <div class="meta-item">
           <div class="meta-label">État · Langue</div>
-          <div class="meta-value">${c.condition} · ${c.language}${c.foil ? ' · Foil' : ''}</div>
+          <div class="meta-value">${c.condition} · ${flagFor(c.language)} ${c.language}${c.foil ? ' · Foil' : ''}</div>
         </div>
         ${c.artist ? `
         <div class="meta-item" style="grid-column:1/-1">
@@ -1848,19 +1965,6 @@
 
   document.getElementById('btn-export').addEventListener('click', exportJSON);
   document.getElementById('btn-import').addEventListener('click', importJSON);
-  document.getElementById('btn-reset').addEventListener('click', () => {
-    if (!confirm('Effacer toutes les cartes ET la mémoire locale du navigateur ? Cette action est irréversible.')) return;
-    console.log('[Reset] Clearing localStorage and inventory');
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(SNAPSHOT_KEY);
-    enrichmentGen++;
-    hideEnrich();
-    inventory = [];
-    jsonSnapshot = '';
-    renderStats();
-    renderInventory();
-    renderSyncStatus();
-  });
 
   // ─── SCRYFALL ENRICHMENT ───
   const enrichBanner = document.getElementById('enrich-banner');
