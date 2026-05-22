@@ -1059,26 +1059,45 @@
     color: var(--green);
   }
 
-  /* Language button on cards — plain white code, clickable to open picker */
-  .lang-flag {
-    background: transparent;
-    border: none;
-    border-bottom: 1px dotted transparent;
-    cursor: pointer;
-    padding: 1px 3px;
-    margin: 0;
+  /* Language selector on cards — native dropdown styled for the theme */
+  .lang-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
     color: #fff;
     font-family: 'DM Mono', monospace;
     font-size: 9px;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    line-height: 1;
-    vertical-align: baseline;
-    transition: color 0.12s, border-color 0.12s;
+    padding: 3px 16px 3px 5px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6' fill='%23c084fc'><path d='M0 0l4 6 4-6z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 7px 5px;
+    line-height: 1.2;
+    transition: border-color 0.12s, background-color 0.12s;
   }
-  .lang-flag:hover {
-    color: var(--accent2);
-    border-bottom-color: var(--accent);
+  .lang-select:hover {
+    border-color: var(--accent);
+    background-color: var(--surface);
+  }
+  .lang-select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .lang-select option {
+    background: var(--surface);
+    color: var(--text);
+  }
+  .lang-select-modal {
+    font-size: 13px;
+    padding: 4px 20px 4px 8px;
+    background-size: 9px 6px;
+    background-position: right 6px center;
   }
 
   /* Shared language picker popover */
@@ -1519,10 +1538,17 @@
         save();
       });
     });
-    container.querySelectorAll('.lang-flag').forEach(btn => {
-      btn.addEventListener('click', e => {
+    container.querySelectorAll('.lang-select').forEach(sel => {
+      // Prevent card click when interacting with the dropdown
+      sel.addEventListener('click', e => e.stopPropagation());
+      sel.addEventListener('mousedown', e => e.stopPropagation());
+      sel.addEventListener('change', e => {
         e.stopPropagation();
-        openLangPicker(btn, btn.dataset.langId);
+        const id = sel.dataset.langId;
+        const card = inventory.find(item => item.id === id);
+        if (!card) return;
+        card.language = sel.value;
+        save();
       });
     });
   }
@@ -1600,7 +1626,7 @@
           <div class="card-set">${escapeHtml(c.setCode || '?')}${cn}${rarity}</div>
           <div class="card-footer">
             <div class="card-price">${(c.price || 0).toFixed(2)}<span>€</span></div>
-            <div class="card-meta">${c.condition || 'NM'} · <button class="lang-flag" data-lang-id="${c.id}" title="Changer la langue">${c.language || 'FR'}</button></div>
+            <div class="card-meta">${c.condition || 'NM'} · <select class="lang-select" data-lang-id="${c.id}" title="Changer la langue">${LANGUAGES.map(l => `<option value="${l}"${l === (c.language || 'FR') ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
           </div>
           ${c.cardmarketUrl ? `<a class="card-link" href="${c.cardmarketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cardmarket →</a>` : ''}
           ${isReserved && c.reservedFor ? `<div class="reserved-for-line">${escapeHtml(c.reservedFor)}</div>` : ''}
@@ -1834,7 +1860,7 @@
         </div>
         <div class="meta-item">
           <div class="meta-label">État · Langue</div>
-          <div class="meta-value">${c.condition} · ${c.language}${c.foil ? ' · Foil' : ''}</div>
+          <div class="meta-value">${c.condition} · <select class="lang-select lang-select-modal" id="modal-lang-select">${LANGUAGES.map(l => `<option value="${l}"${l === (c.language || 'FR') ? ' selected' : ''}>${l}</option>`).join('')}</select>${c.foil ? ' · Foil' : ''}</div>
         </div>
         ${c.artist ? `
         <div class="meta-item" style="grid-column:1/-1">
@@ -1901,6 +1927,18 @@
         priceInput.blur();
       }
     });
+
+    // Editable language in modal
+    const modalLangSelect = modalBody.querySelector('#modal-lang-select');
+    if (modalLangSelect) {
+      modalLangSelect.addEventListener('change', () => {
+        const card = inventory.find(item => item.id === modalCardId);
+        if (!card) return;
+        card.language = modalLangSelect.value;
+        save();
+        renderInventory();
+      });
+    }
 
     function toggleReservation() {
       const card = inventory.find(item => item.id === modalCardId);
